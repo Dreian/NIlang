@@ -10,7 +10,7 @@ Sintaksa je inspirisana Pascal-om, ali jezik ne podržava nikakve potprograme.
 
 Ovaj kod je testiran pod Linux-om i možda takođe radi pod Mac OS.
 Za potrebe kompajliranja ovog kompajlera su vam neophodni `clang`, `cmake` i
-`llvm`.
+`llvm` (poželjno bar verzija 11).
 Kompajlerov *front end* koristi ANTLR4 (C++ interfejs), ali ne treba ništa
 dodatno da se preuzme.
 
@@ -30,7 +30,7 @@ Rezultat je program `nilang`.
 
 Objekti fajl može da se kreira tako što se u komandnoj liniji izvrši:
 ```
-./nilang <izvorni_kod> -t <objektni_fajl>
+build/nilang <izvorni_kod> -t <objektni_fajl>
 ```
 Ovo nije izvršni fajl, objektni fajl mora da se linkuje.
 Ukoliko NIlang program koristi standardni izlaz, onda treba da se iskoristi
