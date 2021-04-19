@@ -22,7 +22,6 @@ instrukcije:
 mkdir build
 cd build
 cmake -DLLVM_CONFIG=/put/do/llvm-config ../
-cd ..
 make
 ```
 Prvo kompajliranje može da traje dugo (preuzimanje relevantnih ANTLR4
