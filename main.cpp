@@ -197,7 +197,7 @@ int main(int argc, const char** argv) {
   // type check
   AST::TypeEnv prog_type_env;
   bool type_errors = false;
-  ast->typeCheck(prog_type_env/*, type_errors*/);
+  ast->typeCheck(prog_type_env, type_errors);
   if (type_errors) {
     std::cerr << "Exiting..." << std::endl;
     return 1;

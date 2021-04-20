@@ -37,8 +37,12 @@ class IntConstantNode;
 class BoolNode; 
 
 class ASTNode {
+protected:
+  int line_no;
+  int col_no;
+  ASTNode(int, int);
 public:
-  virtual Type typeCheck(TypeEnv&) = 0;
+  virtual Type typeCheck(TypeEnv&, bool&) = 0;
   virtual llvm::Value *codegen(Compiler::Components&) = 0;
 };
 
@@ -47,8 +51,8 @@ private:
   IdentifierName variable;
   Type type;
 public:
-  VarDeclNode(IdentifierName, Type);
-  virtual Type typeCheck(TypeEnv&) override;
+  VarDeclNode(IdentifierName, Type, int, int);
+  virtual Type typeCheck(TypeEnv&, bool&) override;
   virtual llvm::Value *codegen(Compiler::Components&) override;
 };
 
@@ -56,30 +60,36 @@ class VarBlockNode : public ASTNode {
 private:
   std::vector<VarDeclNode*> varDecls;
 public:
-  VarBlockNode(std::vector<VarDeclNode*>&);
-  virtual Type typeCheck(TypeEnv&) override;
+  VarBlockNode(std::vector<VarDeclNode*>&, int, int);
+  virtual Type typeCheck(TypeEnv&, bool&) override;
   virtual llvm::Value *codegen(Compiler::Components&) override;
 };
 
-class StatementNode : public ASTNode {};
-class ExpressionNode : public ASTNode {};
+class StatementNode : public ASTNode {
+protected:
+  StatementNode(int line_no, int col_no) : ASTNode(line_no, col_no) {};
+};
+class ExpressionNode : public ASTNode {
+protected:
+  ExpressionNode(int line_no, int col_no) : ASTNode(line_no, col_no) {};
+};
 
-class StatementBlockNode: public ASTNode {
+class StatementBlockNode: public StatementNode {
 private:
   std::vector<StatementNode*> statements;
 public:
-  StatementBlockNode(std::vector<StatementNode*>&);
-  virtual Type typeCheck(TypeEnv&) override;
+  StatementBlockNode(std::vector<StatementNode*>&, int, int);
+  virtual Type typeCheck(TypeEnv&, bool&) override;
   virtual llvm::Value *codegen(Compiler::Components&) override;
 };
 
 class ProgNode : public ASTNode {
 private:
   VarBlockNode *varBlock;
-  StatementBlockNode *statBlock;
+  StatementNode *statBlock;
 public:
-  ProgNode(VarBlockNode *varBlock, StatementBlockNode *statBlock);
-  virtual Type typeCheck(TypeEnv&) override;
+  ProgNode(VarBlockNode*, StatementNode*, int, int);
+  virtual Type typeCheck(TypeEnv&, bool&) override;
   virtual llvm::Value *codegen(Compiler::Components&) override;
 };
 
@@ -88,39 +98,39 @@ private:
   IdentifierName variable;
   ExpressionNode *expressionNode;
 public:
-  AssignmentNode(IdentifierName variable, ExpressionNode *expressionNode);
-  virtual Type typeCheck(TypeEnv&) override;
+  AssignmentNode(IdentifierName, ExpressionNode*, int, int);
+  virtual Type typeCheck(TypeEnv&, bool&) override;
   virtual llvm::Value *codegen(Compiler::Components&) override;
 };
 
 class IfNode : public StatementNode {
 private:
   ExpressionNode *condition;
-  StatementBlockNode *thenBranch;
+  StatementNode *thenBranch;
 public:
-  IfNode(ExpressionNode *condNode, StatementBlockNode *thenNode);
-  virtual Type typeCheck(TypeEnv &typeEnv) override;
+  IfNode(ExpressionNode*, StatementNode*, int, int);
+  virtual Type typeCheck(TypeEnv&, bool&) override;
   virtual llvm::Value *codegen(Compiler::Components&) override;
 };
 
 class IfElseNode : public StatementNode {
 private:
   ExpressionNode *condition;
-  StatementBlockNode *thenBranch;
-  StatementBlockNode *elseBranch;
+  StatementNode *thenBranch;
+  StatementNode *elseBranch;
 public:
-  IfElseNode(ExpressionNode *condNode, StatementBlockNode *thenNode, StatementBlockNode *elseNode);
-  virtual Type typeCheck(TypeEnv &typeEnv) override;
+  IfElseNode(ExpressionNode*, StatementNode*, StatementNode*, int, int);
+  virtual Type typeCheck(TypeEnv&, bool&) override;
   virtual llvm::Value *codegen(Compiler::Components&) override;
 };
 
 class WhileNode : public StatementNode {
 private:
   ExpressionNode *condition;
-  StatementBlockNode *body;
+  StatementNode *body;
 public:
-  WhileNode(ExpressionNode *condition, StatementBlockNode *body);
-  virtual Type typeCheck(TypeEnv& typeEnv) override;
+  WhileNode(ExpressionNode*, StatementNode*, int, int);
+  virtual Type typeCheck(TypeEnv&, bool&) override;
   virtual llvm::Value *codegen(Compiler::Components&) override;
 };
 
@@ -128,8 +138,8 @@ class PrintNode : public StatementNode {
 private:
   ExpressionNode *printed_exp;
 public:
-  PrintNode(ExpressionNode *to_print);
-  virtual Type typeCheck(TypeEnv &typeEnv) override;
+  PrintNode(ExpressionNode*, int, int);
+  virtual Type typeCheck(TypeEnv&, bool&) override;
   virtual llvm::Value *codegen(Compiler::Components&) override;
 };
 
@@ -138,8 +148,8 @@ private:
   ExpressionNode *left_exp, *right_exp;
   BinOp op;
 public:
-  BinopExpressionNode(ExpressionNode *left, ExpressionNode *right, BinOp op);
-  virtual Type typeCheck(TypeEnv &typeEnv) override;
+  BinopExpressionNode(ExpressionNode*, ExpressionNode*, BinOp, int, int);
+  virtual Type typeCheck(TypeEnv&, bool&) override;
   virtual llvm::Value *codegen(Compiler::Components&) override;
 };
 
@@ -148,8 +158,8 @@ private:
   ExpressionNode *exp;
   UnOp op;
 public:
-  UnopExpressionNode(ExpressionNode *exp, UnOp op);
-  virtual Type typeCheck(TypeEnv &typeEnv) override;
+  UnopExpressionNode(ExpressionNode*, UnOp, int, int);
+  virtual Type typeCheck(TypeEnv&, bool&) override;
   virtual llvm::Value *codegen(Compiler::Components&) override;
 };
 
@@ -157,8 +167,8 @@ class IntConstantNode : public ExpressionNode {
 private:
   int underlying_int;
 public:
-  IntConstantNode(int);
-  virtual Type typeCheck(TypeEnv &typeEnv) override;
+  IntConstantNode(int, int, int);
+  virtual Type typeCheck(TypeEnv&, bool&) override;
   virtual llvm::Value *codegen(Compiler::Components&) override;
 };
 
@@ -166,8 +176,8 @@ class BoolNode : public ExpressionNode {
 private:
   bool underlying_bool;
 public:
-  BoolNode(bool truthy);
-  virtual Type typeCheck(TypeEnv&) override;
+  BoolNode(bool, int, int);
+  virtual Type typeCheck(TypeEnv&, bool&) override;
   virtual llvm::Value *codegen(Compiler::Components&) override;
 };
 
@@ -175,8 +185,8 @@ class IdentifierNode : public ExpressionNode {
 private:
   IdentifierName id_name;
 public:
-  IdentifierNode(IdentifierName id_name);
-  virtual Type typeCheck(TypeEnv &typeEnv) override;
+  IdentifierNode(IdentifierName, int, int);
+  virtual Type typeCheck(TypeEnv&, bool&) override;
   virtual llvm::Value *codegen(Compiler::Components&) override;
 };
 

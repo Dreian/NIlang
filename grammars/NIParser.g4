@@ -52,18 +52,19 @@ stat: assignment
     | if_then
     | while_loop
     | print
+    | begin_end
 ;
 
 assignment: Ident ASSIGN exp
 ;
 
-if_then: IF exp THEN stat_block
+if_then: IF exp THEN stat
 ;
 
-if_then_else: IF exp THEN stat_block ELSE stat_block
+if_then_else: IF exp THEN stat ELSE stat
 ;
 
-while_loop: WHILE exp DO stat_block
+while_loop: WHILE exp DO stat
 ;
 
 print: PRINT LPAR exp RPAR
@@ -76,10 +77,6 @@ var_specs: VAR (var_decl SEMI)+
 ;
 
 stat_seq: stat (SEMI stat)*
-;
-
-stat_block: stat
-          | begin_end
 ;
 
 begin_end: BEGIN stat_seq END

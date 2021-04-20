@@ -4,7 +4,7 @@ using namespace antlr4;
 
 class NIParserErrorListener : public antlr4::BaseErrorListener {
 private:
-  bool error_bit;
+  bool &error_bit;
 public:
   NIParserErrorListener(bool&);
   virtual void syntaxError(Recognizer *recognizer, Token *offendingSymbol, size_t line, size_t charPositionInLine,

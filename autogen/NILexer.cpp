@@ -1,5 +1,5 @@
 
-// Generated from NILexer.g4 by ANTLR 4.9
+// Generated from grammars/NILexer.g4 by ANTLR 4.9
 
 
 #include "NILexer.h"

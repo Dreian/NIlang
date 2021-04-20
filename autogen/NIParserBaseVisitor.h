@@ -1,5 +1,5 @@
 
-// Generated from NIParser.g4 by ANTLR 4.9
+// Generated from grammars/NIParser.g4 by ANTLR 4.9
 
 #pragma once
 
@@ -92,10 +92,6 @@ public:
   }
 
   virtual antlrcpp::Any visitStat_seq(NIParser::Stat_seqContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitStat_block(NIParser::Stat_blockContext *ctx) override {
     return visitChildren(ctx);
   }
 

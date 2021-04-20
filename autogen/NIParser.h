@@ -1,5 +1,5 @@
 
-// Generated from NIParser.g4 by ANTLR 4.9
+// Generated from grammars/NIParser.g4 by ANTLR 4.9
 
 #pragma once
 
@@ -26,8 +26,7 @@ public:
     RuleIdent_term = 5, RulePar_exp = 6, RuleNot_exp = 7, RuleMinus_exp = 8, 
     RuleBinop_exp = 9, RuleBool_binop_exp = 10, RuleStat = 11, RuleAssignment = 12, 
     RuleIf_then = 13, RuleIf_then_else = 14, RuleWhile_loop = 15, RulePrint = 16, 
-    RuleVar_decl = 17, RuleVar_specs = 18, RuleStat_seq = 19, RuleStat_block = 20, 
-    RuleBegin_end = 21
+    RuleVar_decl = 17, RuleVar_specs = 18, RuleStat_seq = 19, RuleBegin_end = 20
   };
 
   explicit NIParser(antlr4::TokenStream *input);
@@ -60,16 +59,13 @@ public:
   class Var_declContext;
   class Var_specsContext;
   class Stat_seqContext;
-  class Stat_blockContext;
   class Begin_endContext; 
 
   class  ProgContext : public antlr4::ParserRuleContext {
   public:
     ProgContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    antlr4::tree::TerminalNode *BEGIN();
-    Stat_seqContext *stat_seq();
-    antlr4::tree::TerminalNode *END();
+    Begin_endContext *begin_end();
     antlr4::tree::TerminalNode *DOT();
     antlr4::tree::TerminalNode *EOF();
     Var_specsContext *var_specs();
@@ -267,6 +263,7 @@ public:
     If_thenContext *if_then();
     While_loopContext *while_loop();
     PrintContext *print();
+    Begin_endContext *begin_end();
 
     virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
@@ -301,7 +298,7 @@ public:
     antlr4::tree::TerminalNode *IF();
     ExpContext *exp();
     antlr4::tree::TerminalNode *THEN();
-    Stat_blockContext *stat_block();
+    StatContext *stat();
 
     virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
@@ -319,8 +316,8 @@ public:
     antlr4::tree::TerminalNode *IF();
     ExpContext *exp();
     antlr4::tree::TerminalNode *THEN();
-    std::vector<Stat_blockContext *> stat_block();
-    Stat_blockContext* stat_block(size_t i);
+    std::vector<StatContext *> stat();
+    StatContext* stat(size_t i);
     antlr4::tree::TerminalNode *ELSE();
 
     virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
@@ -339,7 +336,7 @@ public:
     antlr4::tree::TerminalNode *WHILE();
     ExpContext *exp();
     antlr4::tree::TerminalNode *DO();
-    Stat_blockContext *stat_block();
+    StatContext *stat();
 
     virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
@@ -421,22 +418,6 @@ public:
   };
 
   Stat_seqContext* stat_seq();
-
-  class  Stat_blockContext : public antlr4::ParserRuleContext {
-  public:
-    Stat_blockContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-    virtual size_t getRuleIndex() const override;
-    StatContext *stat();
-    Begin_endContext *begin_end();
-
-    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
-    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
-
-    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
-  };
-
-  Stat_blockContext* stat_block();
 
   class  Begin_endContext : public antlr4::ParserRuleContext {
   public:

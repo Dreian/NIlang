@@ -1,5 +1,5 @@
 
-// Generated from NIParser.g4 by ANTLR 4.9
+// Generated from grammars/NIParser.g4 by ANTLR 4.9
 
 #pragma once
 
@@ -58,8 +58,6 @@ public:
     virtual antlrcpp::Any visitVar_specs(NIParser::Var_specsContext *context) = 0;
 
     virtual antlrcpp::Any visitStat_seq(NIParser::Stat_seqContext *context) = 0;
-
-    virtual antlrcpp::Any visitStat_block(NIParser::Stat_blockContext *context) = 0;
 
     virtual antlrcpp::Any visitBegin_end(NIParser::Begin_endContext *context) = 0;
 

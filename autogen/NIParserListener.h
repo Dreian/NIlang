@@ -1,5 +1,5 @@
 
-// Generated from NIParser.g4 by ANTLR 4.9
+// Generated from grammars/NIParser.g4 by ANTLR 4.9
 
 #pragma once
 
@@ -73,9 +73,6 @@ public:
 
   virtual void enterStat_seq(NIParser::Stat_seqContext *ctx) = 0;
   virtual void exitStat_seq(NIParser::Stat_seqContext *ctx) = 0;
-
-  virtual void enterStat_block(NIParser::Stat_blockContext *ctx) = 0;
-  virtual void exitStat_block(NIParser::Stat_blockContext *ctx) = 0;
 
   virtual void enterBegin_end(NIParser::Begin_endContext *ctx) = 0;
   virtual void exitBegin_end(NIParser::Begin_endContext *ctx) = 0;

@@ -34,12 +34,45 @@ std::string type_to_string(Type type) {
   }
 }
 
-VarDeclNode::VarDeclNode(IdentifierName variable, Type type) :
-  variable(variable), type(type) {};
+std::string op_to_string(BinOp op) {
+  switch (op) {
+  case PLUS:
+    return "+";
+  case MINUS:
+    return "-";
+  case TIMES:
+    return "*";
+  case DIV:
+    return "div";
+  case AND:
+    return "and";
+  case OR:
+    return "or";
+  case LT:
+    return "<";
+  case GT:
+    return ">";
+  case LEQ:
+    return "<=";
+  case GEQ:
+    return ">=";
+  case EQ:
+    return "=";
+  case NEQ:
+    return "<>";
+  }
+}
 
-Type VarDeclNode::typeCheck(TypeEnv& typeEnv) {
+ASTNode::ASTNode(int line_no, int col_no) : line_no(line_no), col_no(col_no) {};
+
+VarDeclNode::VarDeclNode(IdentifierName variable, Type type, int line_no, int col_no) :
+  ASTNode(line_no, col_no), variable(variable), type(type) {};
+
+Type VarDeclNode::typeCheck(TypeEnv& typeEnv, bool& error) {
   if (typeEnv.find(variable) != typeEnv.end()) {
-    throw 1;
+    std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+              << "  variable " << variable << " already declared" << std::endl;
+    error = true;
   } 
   typeEnv[variable] = type;
   return NA;
@@ -55,11 +88,12 @@ llvm::Value *VarDeclNode::codegen(Compiler::Components &comp) {
   }
 }
 
-VarBlockNode::VarBlockNode(std::vector<VarDeclNode*>& varDecls) : varDecls(varDecls) {};
+VarBlockNode::VarBlockNode(std::vector<VarDeclNode*>& varDecls, int line_no, int col_no) :
+  ASTNode(line_no, col_no), varDecls(varDecls) {};
 
-Type VarBlockNode::typeCheck(TypeEnv& typeEnv) {
+Type VarBlockNode::typeCheck(TypeEnv& typeEnv, bool &error) {
   for (auto decl : varDecls) {
-    decl->typeCheck(typeEnv);
+    decl->typeCheck(typeEnv, error);
   }
   return NA;
 }
@@ -71,13 +105,15 @@ llvm::Value *VarBlockNode::codegen(Compiler::Components &comp) {
 }
 
 
-StatementBlockNode::StatementBlockNode(std::vector<StatementNode*>& statements) :
-  statements(statements) {};
+StatementBlockNode::StatementBlockNode(std::vector<StatementNode*>& statements, int line_no, int col_no) :
+  StatementNode(line_no, col_no), statements(statements) {};
 
-Type StatementBlockNode::typeCheck(TypeEnv& typeEnv) {
+Type StatementBlockNode::typeCheck(TypeEnv& typeEnv, bool &error) {
   for (auto statement : statements) {
-    if (statement->typeCheck(typeEnv) != UNIT) {
-      throw 77;
+    if (statement->typeCheck(typeEnv, error) != UNIT) {
+      std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+                << "  only statements can be sequenced" << std::endl;
+      error = true;
     }
   }
   return UNIT;
@@ -89,12 +125,12 @@ llvm::Value *StatementBlockNode::codegen(Compiler::Components &comp) {
   }
 }
 
-ProgNode::ProgNode(VarBlockNode *varBlock, StatementBlockNode *statBlock) :
-  varBlock(varBlock), statBlock(statBlock) {};
+ProgNode::ProgNode(VarBlockNode *varBlock, StatementNode *statBlock, int line_no, int col_no) :
+  ASTNode(line_no, col_no), varBlock(varBlock), statBlock(statBlock) {};
 
-Type ProgNode::typeCheck(TypeEnv& typeEnv) {
-  varBlock->typeCheck(typeEnv);
-  statBlock->typeCheck(typeEnv);
+Type ProgNode::typeCheck(TypeEnv& typeEnv, bool &error) {
+  varBlock->typeCheck(typeEnv, error);
+  statBlock->typeCheck(typeEnv, error);
   return NA;
 }
   
@@ -105,17 +141,22 @@ llvm::Value *ProgNode::codegen(Compiler::Components &comp) {
   comp.builder.CreateRet(llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(comp.llvmCtx), 0));
 }
 
-AssignmentNode::AssignmentNode(IdentifierName variable, ExpressionNode *expressionNode) :
-  variable(variable), expressionNode(expressionNode) {};
+AssignmentNode::AssignmentNode(IdentifierName variable, ExpressionNode *expressionNode, int line_no, int col_no) :
+  StatementNode(line_no, col_no), variable(variable), expressionNode(expressionNode) {};
 
-Type AssignmentNode::typeCheck(TypeEnv &typeEnv) {
+Type AssignmentNode::typeCheck(TypeEnv &typeEnv, bool &error) {
   if (typeEnv.find(variable) == typeEnv.end()) {
-    throw 2;
+    std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+              << "  undeclared variable " << variable << std::endl;
+    error = true;
   }
   Type var_type = typeEnv[variable];
-  Type expr_type = expressionNode->typeCheck(typeEnv);
+  Type expr_type = expressionNode->typeCheck(typeEnv, error);
   if (var_type != expr_type) {
-    throw 3;
+    std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+              << "  cannot assign " << type_to_string(expr_type)
+              << " to a variable of type " << type_to_string(var_type) << std::endl;
+    error = true;
   }
   return UNIT;
 }
@@ -126,15 +167,19 @@ llvm::Value *AssignmentNode::codegen(Compiler::Components &comp) {
   comp.builder.CreateStore(rhs, var);
 }
 
-IfNode::IfNode(ExpressionNode *condNode, StatementBlockNode *thenNode) :
-  condition(condNode), thenBranch(thenNode) {}
+IfNode::IfNode(ExpressionNode *condNode, StatementNode *thenNode, int line_no, int col_no) :
+  StatementNode(line_no, col_no), condition(condNode), thenBranch(thenNode) {}
 
-Type IfNode::typeCheck(TypeEnv &typeEnv) {
-  if (condition->typeCheck(typeEnv) != BOOL) {
-    throw 4;
+Type IfNode::typeCheck(TypeEnv &typeEnv, bool &error) {
+  if (condition->typeCheck(typeEnv, error) != BOOL) {
+    std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+              << "  condition must be a boolean expression" << std::endl;
+    error = true;
   }
-  if (thenBranch->typeCheck(typeEnv) != UNIT) {
-    throw 5;
+  if (thenBranch->typeCheck(typeEnv, error) != UNIT) {
+    std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+              << "  body of a conditional must be a statement" << std::endl;
+    error = true;
   }
   return UNIT;
 }
@@ -153,18 +198,24 @@ llvm::Value *IfNode::codegen(Compiler::Components &comp) {
   comp.builder.SetInsertPoint(cont);
 }
 
-IfElseNode::IfElseNode(ExpressionNode *condNode, StatementBlockNode *thenNode, StatementBlockNode *elseNode) :
-  condition(condNode), thenBranch(thenNode), elseBranch(elseNode) {};
+IfElseNode::IfElseNode(ExpressionNode *condNode, StatementNode *thenNode, StatementNode *elseNode, int line_no, int col_no) :
+  StatementNode(line_no, col_no), condition(condNode), thenBranch(thenNode), elseBranch(elseNode) {};
 
-Type IfElseNode::typeCheck(TypeEnv &typeEnv) {
-  if (condition->typeCheck(typeEnv) != BOOL) {
-    throw 4;
+Type IfElseNode::typeCheck(TypeEnv &typeEnv, bool &error) {
+  if (condition->typeCheck(typeEnv, error) != BOOL) {
+    std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+              << "  condition must be a boolean expression" << std::endl;
+    error = true;
   }
-  if (thenBranch->typeCheck(typeEnv) != UNIT) {
-    throw 5;
+  if (thenBranch->typeCheck(typeEnv, error) != UNIT) {
+    std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+              << "  then branch of a conditional must be a statement" << std::endl;
+    error = true;
   }
-  if (elseBranch->typeCheck(typeEnv) != UNIT) {
-    throw 6;
+  if (elseBranch->typeCheck(typeEnv, error) != UNIT) {
+    std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+              << "  else branch of a conditional must be a statement" << std::endl;
+    error = true;
   }
   return UNIT;
 }
@@ -189,15 +240,19 @@ llvm::Value *IfElseNode::codegen(Compiler::Components &comp) {
   comp.builder.SetInsertPoint(cont);
 }
 
-WhileNode::WhileNode(ExpressionNode *condition, StatementBlockNode *body):
-  condition(condition), body(body) {}
+WhileNode::WhileNode(ExpressionNode *condition, StatementNode *body, int line_no, int col_no):
+  StatementNode(line_no, col_no), condition(condition), body(body) {}
 
-Type WhileNode::typeCheck(TypeEnv& typeEnv) {
-  if (condition->typeCheck(typeEnv) != BOOL) {
-    throw 88;
+Type WhileNode::typeCheck(TypeEnv& typeEnv, bool &error) {
+  if (condition->typeCheck(typeEnv, error) != BOOL) {
+    std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+              << "  loop condition must be a boolean" << std::endl;
+    error = true;
   }
-  if (body->typeCheck(typeEnv) != UNIT) {
-    throw 99;
+  if (body->typeCheck(typeEnv, error) != UNIT) {
+    std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+              << "  loop body must be a statement" << std::endl;
+    error = true;
   }
   return UNIT;
 }
@@ -219,11 +274,14 @@ llvm::Value *WhileNode::codegen(Compiler::Components &comp) {
   comp.builder.SetInsertPoint(cont);
 }
 
-PrintNode::PrintNode(ExpressionNode *to_print) : printed_exp(to_print) {};
+PrintNode::PrintNode(ExpressionNode *to_print, int line_no, int col_no) :
+  StatementNode(line_no, col_no), printed_exp(to_print) {};
 
-Type PrintNode::typeCheck(TypeEnv &typeEnv) {
-  if (printed_exp->typeCheck(typeEnv) != INT) {
-    throw 101;
+Type PrintNode::typeCheck(TypeEnv &typeEnv, bool &error) {
+  if (printed_exp->typeCheck(typeEnv, error) != INT) {
+    std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+              << "  only integer-valued expressions can be printed" << std::endl;
+    error = true;
   }
   return UNIT;
 }
@@ -237,14 +295,18 @@ llvm::Value *PrintNode::codegen(Compiler::Components &comp) {
   return comp.builder.CreateCall(comp.llvmModule->getFunction("printf"), print_args);
 }
 
-BinopExpressionNode::BinopExpressionNode(ExpressionNode *left, ExpressionNode *right, BinOp op):
-  left_exp(left), right_exp(right), op(op) {}
+BinopExpressionNode::BinopExpressionNode(ExpressionNode *left, ExpressionNode *right, BinOp op, int line_no, int col_no):
+  ExpressionNode(line_no, col_no), left_exp(left), right_exp(right), op(op) {}
 
-Type BinopExpressionNode::typeCheck(TypeEnv &typeEnv) {
-  Type typeLeft = left_exp->typeCheck(typeEnv);
-  Type typeRight = right_exp->typeCheck(typeEnv);
+Type BinopExpressionNode::typeCheck(TypeEnv &typeEnv, bool &error) {
+  Type typeLeft = left_exp->typeCheck(typeEnv, error);
+  Type typeRight = right_exp->typeCheck(typeEnv, error);
   if (typeLeft != typeRight) {
-    throw 7;
+    std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+              << "  operand types do not match ("
+              << type_to_string(typeLeft) << " and " << type_to_string(typeRight)
+              << ")" << std::endl;
+    error = true;
   }
   switch (op)
   {
@@ -253,7 +315,10 @@ Type BinopExpressionNode::typeCheck(TypeEnv &typeEnv) {
   case TIMES:
   case DIV:
     if (typeLeft != INT) {
-      throw 8;
+      std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+                << "  operands of operator " << op_to_string(op)
+                << " must be of type integer" << std::endl;
+      error = true;
     }
     return INT;
   case GT:
@@ -263,13 +328,19 @@ Type BinopExpressionNode::typeCheck(TypeEnv &typeEnv) {
   case GEQ:
   case LEQ:
     if (typeLeft != INT) {
-      throw 9;
+      std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+                << "  operands of operator " << op_to_string(op)
+                << " must be of type integer" << std::endl;
+      error = true;
     }
     return BOOL;
   case AND:
   case OR:
     if (typeLeft != BOOL) {
-      throw 91;
+      std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+                << "  operands of operator " << op_to_string(op)
+                << " must be of type boolean" << std::endl;
+      error = true;
     }
     return BOOL;
   default:
@@ -308,21 +379,25 @@ llvm::Value *BinopExpressionNode::codegen(Compiler::Components &comp) {
   }
 }
 
-UnopExpressionNode::UnopExpressionNode(ExpressionNode *exp, UnOp op):
-  exp(exp), op(op) {}
+UnopExpressionNode::UnopExpressionNode(ExpressionNode *exp, UnOp op, int line_no, int col_no):
+  ExpressionNode(line_no, col_no), exp(exp), op(op) {}
 
-Type UnopExpressionNode::typeCheck(TypeEnv &typeEnv) {
-  Type type = exp->typeCheck(typeEnv);
+Type UnopExpressionNode::typeCheck(TypeEnv &typeEnv, bool &error) {
+  Type type = exp->typeCheck(typeEnv, error);
   switch (op)
   {
   case NEG:
     if (type != INT) {
-      throw 10;
+      std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+                << "  operand of unary operator - must be an integer expression" << std::endl;
+      error = true;
     }
     return INT;
   case NOT:
     if (type != BOOL) {
-      throw 11;
+      std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+                << "  operand of unary operator - must be a boolean expression" << std::endl;
+      error = true;
     }
     return BOOL;
   default:
@@ -332,9 +407,10 @@ Type UnopExpressionNode::typeCheck(TypeEnv &typeEnv) {
 
 llvm::Value *UnopExpressionNode::codegen(Compiler::Components &typeEnv) {}
 
-IntConstantNode::IntConstantNode(int number): underlying_int(number) {};
+IntConstantNode::IntConstantNode(int number, int line_no, int col_no) :
+  ExpressionNode(line_no, col_no), underlying_int(number) {};
 
-Type IntConstantNode::typeCheck(TypeEnv &typeEnv) {
+Type IntConstantNode::typeCheck(TypeEnv &typeEnv, bool &error) {
   return INT;
 }
 
@@ -343,9 +419,10 @@ llvm::Value *IntConstantNode::codegen(Compiler::Components &comp) {
                                 underlying_int, true);
 }
 
-BoolNode::BoolNode(bool truthy): underlying_bool(truthy) {};
+BoolNode::BoolNode(bool truthy, int line_no, int col_no) :
+  ExpressionNode(line_no, col_no), underlying_bool(truthy) {};
 
-Type BoolNode::typeCheck(TypeEnv &typeEnv) {
+Type BoolNode::typeCheck(TypeEnv &typeEnv, bool &error) {
   return BOOL;
 }
 
@@ -354,11 +431,14 @@ Type BoolNode::typeCheck(TypeEnv &typeEnv) {
                                 underlying_bool);
 }
 
-IdentifierNode::IdentifierNode(IdentifierName id_name): id_name(id_name) {};
+IdentifierNode::IdentifierNode(IdentifierName id_name, int line_no, int col_no) :
+  ExpressionNode(line_no, col_no), id_name(id_name) {};
 
-Type IdentifierNode::typeCheck(TypeEnv &typeEnv) {
+Type IdentifierNode::typeCheck(TypeEnv &typeEnv, bool &error) {
   if (typeEnv.find(id_name) == typeEnv.end()) {
-    throw 222;
+    std::cerr << "Error on line " << line_no << ", column " << col_no << ":" << std::endl
+              << "  undeclared variable " << id_name << std::endl;
+    error = true;
   }
   return typeEnv[id_name];
 }
