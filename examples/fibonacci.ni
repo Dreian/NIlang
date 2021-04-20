@@ -2,7 +2,6 @@ var x : integer;
     y : integer;
     z : integer;
     n : integer;
-    b : boolean;
 
 begin
   x := 0;
