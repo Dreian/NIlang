@@ -10,10 +10,10 @@ begin
   z := 0;
   n := 20;
   while n > 0 do begin
+    print(x);
     n := n - 1;
     z := x + y;
     x := y;
     y := z
-  end;
-  print(z)
+  end
 end.
