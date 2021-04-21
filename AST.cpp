@@ -86,6 +86,7 @@ llvm::Value *VarDeclNode::codegen(Compiler::Components &comp) {
     comp.symbols[variable] = comp.builder.CreateAlloca(llvm::IntegerType::getInt1Ty(comp.llvmCtx), 0,
                                                        variable.c_str());
   }
+  return nullptr;
 }
 
 VarBlockNode::VarBlockNode(std::vector<VarDeclNode*>& varDecls, int line_no, int col_no) :
@@ -102,8 +103,8 @@ llvm::Value *VarBlockNode::codegen(Compiler::Components &comp) {
   for (auto decl : varDecls) {
     decl->codegen(comp);
   }
+  return nullptr;
 }
-
 
 StatementBlockNode::StatementBlockNode(std::vector<StatementNode*>& statements, int line_no, int col_no) :
   StatementNode(line_no, col_no), statements(statements) {};
@@ -123,6 +124,7 @@ llvm::Value *StatementBlockNode::codegen(Compiler::Components &comp) {
   for (auto statement : statements) {
     statement->codegen(comp);
   }
+  return nullptr;
 }
 
 ProgNode::ProgNode(VarBlockNode *varBlock, StatementNode *statBlock, int line_no, int col_no) :
@@ -139,6 +141,7 @@ llvm::Value *ProgNode::codegen(Compiler::Components &comp) {
   varBlock->codegen(comp);
   statBlock->codegen(comp);
   comp.builder.CreateRet(llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(comp.llvmCtx), 0));
+  return nullptr;
 }
 
 AssignmentNode::AssignmentNode(IdentifierName variable, ExpressionNode *expressionNode, int line_no, int col_no) :
@@ -165,6 +168,7 @@ llvm::Value *AssignmentNode::codegen(Compiler::Components &comp) {
   llvm::Value *rhs = expressionNode->codegen(comp);
   llvm::Value *var = comp.symbols[variable];
   comp.builder.CreateStore(rhs, var);
+  return nullptr;
 }
 
 IfNode::IfNode(ExpressionNode *condNode, StatementNode *thenNode, int line_no, int col_no) :
@@ -196,6 +200,7 @@ llvm::Value *IfNode::codegen(Compiler::Components &comp) {
     comp.builder.CreateBr(cont);
   }
   comp.builder.SetInsertPoint(cont);
+  return nullptr;
 }
 
 IfElseNode::IfElseNode(ExpressionNode *condNode, StatementNode *thenNode, StatementNode *elseNode, int line_no, int col_no) :
@@ -238,6 +243,7 @@ llvm::Value *IfElseNode::codegen(Compiler::Components &comp) {
     comp.builder.CreateBr(cont);
   }
   comp.builder.SetInsertPoint(cont);
+  return nullptr;
 }
 
 WhileNode::WhileNode(ExpressionNode *condition, StatementNode *body, int line_no, int col_no):
@@ -272,6 +278,7 @@ llvm::Value *WhileNode::codegen(Compiler::Components &comp) {
     comp.builder.CreateBr(whileCond);
   }
   comp.builder.SetInsertPoint(cont);
+  return nullptr;
 }
 
 PrintNode::PrintNode(ExpressionNode *to_print, int line_no, int col_no) :
@@ -377,6 +384,7 @@ llvm::Value *BinopExpressionNode::codegen(Compiler::Components &comp) {
   case LEQ:
     return comp.builder.CreateICmpSLE(left, right, "leqtmp");
   }
+  return nullptr;
 }
 
 UnopExpressionNode::UnopExpressionNode(ExpressionNode *exp, UnOp op, int line_no, int col_no):
@@ -405,7 +413,17 @@ Type UnopExpressionNode::typeCheck(TypeEnv &typeEnv, bool &error) {
   }
 }
 
-llvm::Value *UnopExpressionNode::codegen(Compiler::Components &typeEnv) {}
+llvm::Value *UnopExpressionNode::codegen(Compiler::Components &comp) {
+  // FORGOT ABOUT TODO!!!!
+  llvm::Value *arg = exp->codegen(comp);
+  switch (op) {
+  case NEG:
+    return comp.builder.CreateNeg(arg, "negtmp");
+  case NOT:
+    return comp.builder.CreateNot(arg, "nottmp");
+  }
+  return nullptr;
+}
 
 IntConstantNode::IntConstantNode(int number, int line_no, int col_no) :
   ExpressionNode(line_no, col_no), underlying_int(number) {};
@@ -445,7 +463,6 @@ Type IdentifierNode::typeCheck(TypeEnv &typeEnv, bool &error) {
 
 llvm::Value *IdentifierNode::codegen(Compiler::Components &comp) {
   return comp.builder.CreateLoad(comp.symbols[id_name], id_name.c_str());
-
 }
 
 }
